@@ -23,6 +23,7 @@ import com.drogueria.inventario.repositories.ProductRepository;
 import com.drogueria.inventario.repositories.SaleRepository;
 import com.drogueria.inventario.repositories.UserRepository;
 import com.drogueria.inventario.services.SaleService;
+import com.drogueria.inventario.utils.SaleReceiptGenerator;
 
 import org.apache.poi.xssf.usermodel.XSSFCellStyle;
 import org.apache.poi.xssf.usermodel.XSSFColor;
@@ -190,16 +191,16 @@ public class SaleServiceImpl implements SaleService {
     @Override
     public void exportSalesReport(LocalDateTime start, LocalDateTime end, String filePath) {
         List<Sale> sales = findSalesByDateRange(start, end);
-    
+
         try (Workbook workbook = new XSSFWorkbook();
                 FileOutputStream outputStream = new FileOutputStream(filePath)) {
-    
+
             Sheet sheet = workbook.createSheet("Reporte de Ventas");
-    
+
             // Updated headers array with new "Vendedor" column
             String[] headers = {
                     "ID Venta",
-                    "Vendedor",                  // New column
+                    "Vendedor", // New column
                     "Fecha de Venta",
                     "Total Sale Amount",
                     "Producto",
@@ -210,85 +211,88 @@ public class SaleServiceImpl implements SaleService {
                     "Total de Venta",
                     "Ganancias Producto"
             };
-    
+
             // Create header row with styling
             Row headerRow = sheet.createRow(0);
             CellStyle headerStyle = workbook.createCellStyle();
-    
+
             if (headerStyle instanceof XSSFCellStyle) {
                 XSSFCellStyle xssfHeaderStyle = (XSSFCellStyle) headerStyle;
                 xssfHeaderStyle.setFillForegroundColor(new XSSFColor(new Color(0, 129, 219), null));
                 xssfHeaderStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
             }
-    
+
             Font headerFont = workbook.createFont();
             headerFont.setColor(IndexedColors.WHITE.getIndex());
             headerFont.setBold(true);
             headerStyle.setFont(headerFont);
-    
+
             headerStyle.setAlignment(HorizontalAlignment.CENTER);
             headerStyle.setBorderBottom(BorderStyle.THIN);
             headerStyle.setBorderTop(BorderStyle.THIN);
             headerStyle.setBorderLeft(BorderStyle.THIN);
             headerStyle.setBorderRight(BorderStyle.THIN);
-    
+
             for (int i = 0; i < headers.length; i++) {
                 Cell cell = headerRow.createCell(i);
                 cell.setCellValue(headers[i]);
                 cell.setCellStyle(headerStyle);
             }
-    
+
             // Populate data rows
             int rowNum = 1;
             DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-    
+
             // Totals tracking
             double totalSalesAmount = 0.0;
             double totalSalesMargin = 0.0;
-    
+
             for (Sale sale : sales) {
                 for (SaleDetail detail : sale.getDetails()) {
                     Row row = sheet.createRow(rowNum++);
-    
+
                     // ID Venta
                     row.createCell(0).setCellValue(sale.getId() != null ? sale.getId() : 0);
-                    
+
                     // Vendedor (User full name)
-                    String vendedor = (sale.getUser() != null) 
-                        ? sale.getUser().getName() + " " + sale.getUser().getLastName() 
-                        : "N/A";
+                    String vendedor = (sale.getUser() != null)
+                            ? sale.getUser().getName() + " " + sale.getUser().getLastName()
+                            : "N/A";
                     row.createCell(1).setCellValue(vendedor);
-                    
+
                     // Rest of the columns (shifted one position to the right)
-                    row.createCell(2).setCellValue(sale.getCreatedAt() != null ? sale.getCreatedAt().format(dateFormatter) : "");
+                    row.createCell(2)
+                            .setCellValue(sale.getCreatedAt() != null ? sale.getCreatedAt().format(dateFormatter) : "");
                     row.createCell(3).setCellValue(sale.getTotal());
                     row.createCell(4).setCellValue(detail.getProduct() != null ? detail.getProduct().getName() : "N/A");
-                    row.createCell(5).setCellValue(detail.getProduct() != null ? detail.getProduct().getBarcode() : "N/A");
+                    row.createCell(5)
+                            .setCellValue(detail.getProduct() != null ? detail.getProduct().getBarcode() : "N/A");
                     row.createCell(6).setCellValue(detail.getQuantity());
                     row.createCell(7).setCellValue(detail.getPrice());
-                    
-                    double purchasePrice = detail.getPurchasePriceAtSale() != null ? detail.getPurchasePriceAtSale() : 0.0;
+
+                    double purchasePrice = detail.getPurchasePriceAtSale() != null ? detail.getPurchasePriceAtSale()
+                            : 0.0;
                     row.createCell(8).setCellValue(purchasePrice);
                     row.createCell(9).setCellValue(detail.getSubtotal());
-                    
+
                     double productMargin = detail.getSubtotal() - (detail.getQuantity() * purchasePrice);
                     row.createCell(10).setCellValue(productMargin);
-    
+
                     // Calculate sale margin
                     double saleMargin = sale.getTotal() - (sale.getDetails().stream()
                             .mapToDouble(d -> d.getQuantity() *
                                     (d.getPurchasePriceAtSale() != null ? d.getPurchasePriceAtSale() : 0.0))
                             .sum());
-    
+
                     // Update totals
                     totalSalesAmount += sale.getTotal();
                     totalSalesMargin += saleMargin;
                 }
             }
-    
+
             // Create summary sheet
             Sheet summarySheet = workbook.createSheet("Sales Summary");
-    
+
             // Summary headers
             String[] summaryHeaders = { "Metric", "Value" };
             Row summaryHeaderRow = summarySheet.createRow(0);
@@ -297,31 +301,38 @@ public class SaleServiceImpl implements SaleService {
                 cell.setCellValue(summaryHeaders[i]);
                 cell.setCellStyle(headerStyle);
             }
-    
+
             // Summary rows
             String[][] summaryData = {
                     { "Total Sales Amount", String.format("%.2f", totalSalesAmount) },
                     { "Total Sales Margin", String.format("%.2f", totalSalesMargin) },
                     { "Number of Sales", String.valueOf(sales.size()) }
             };
-    
+
             for (int i = 0; i < summaryData.length; i++) {
                 Row summaryRow = summarySheet.createRow(i + 1);
                 summaryRow.createCell(0).setCellValue(summaryData[i][0]);
                 summaryRow.createCell(1).setCellValue(summaryData[i][1]);
             }
-    
+
             // Auto-size columns for both sheets
             for (int i = 0; i < headers.length; i++) {
                 sheet.autoSizeColumn(i);
             }
             summarySheet.autoSizeColumn(0);
             summarySheet.autoSizeColumn(1);
-    
+
             // Write to file
             workbook.write(outputStream);
         } catch (IOException e) {
             throw new RuntimeException("Error exporting sales report", e);
         }
+    }
+
+    @Override
+    public byte[] generateSaleReceipt(Long saleId) {
+        Sale sale = saleRepository.findById(saleId)
+                .orElseThrow(() -> new RuntimeException("Sale not found"));
+        return SaleReceiptGenerator.generateReceipt(sale);
     }
 }

@@ -126,6 +126,7 @@ public class SpringSecurityConfig {
                 .hasAuthority("POST /sales/{saleId}/return-entire")
                 .requestMatchers(HttpMethod.POST, "/sales/{saleId}/return").hasAuthority("POST /sales/{saleId}/return")
                 .requestMatchers(HttpMethod.GET, "/sales/report").hasAuthority("GET /sales/report")
+                .requestMatchers(HttpMethod.GET, "/{saleId}/receipt").hasAuthority("GET /{saleId}/receipt")
 
                 .anyRequest().authenticated())
                 .addFilter(new JwtAuthenticationFilter(authenticationManager()))

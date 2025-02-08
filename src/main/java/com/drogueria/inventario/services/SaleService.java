@@ -13,4 +13,5 @@ public interface SaleService {
     boolean processReturn(Long saleId, Long productId, Integer quantity);
     void exportSalesReport(LocalDateTime start, LocalDateTime end, String filePath);
     void returnEntireSale(Long saleId);
+    byte[] generateSaleReceipt(Long saleId);
 }
