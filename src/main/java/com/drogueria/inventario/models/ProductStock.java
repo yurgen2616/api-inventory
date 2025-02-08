@@ -33,14 +33,14 @@ public class ProductStock {
     private int quantity;
 
     private double unitPrice;
+    
+    private double unitSalePrice;
 
     @Column(name = "expiration_date", nullable = false)
     private LocalDate expirationDate;
 
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
-
-    // Getters y Setters
 
     @PrePersist
     public void onCreate() {

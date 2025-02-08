@@ -63,8 +63,9 @@ public class ProductController {
             @PathVariable Long id,
             @RequestParam int quantity,
             @RequestParam double unitPrice, 
+            @RequestParam double unitSalePrice,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate expirationDate) {
-        productService.addStock(id, quantity, unitPrice,expirationDate);
+        productService.addStock(id, quantity, unitPrice, unitSalePrice, expirationDate);
         return ResponseEntity.ok(productService.getProductById(id));
     }
 
