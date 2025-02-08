@@ -40,16 +40,17 @@ public class SaleController {
 
     @PostMapping
     public ResponseEntity<Sale> createSale(@RequestBody Map<String, List<SaleDetail>> saleData) {
-        
+
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String username = authentication.getName();
-        
-        // Como estás usando JpaUserDetailsService, el username puede ser email o nombre de usuario
+
+        // Como estás usando JpaUserDetailsService, el username puede ser email o nombre
+        // de usuario
         // El servicio ya maneja ambos casos
         Long userId = userService.getUserByUsername(username).getId();
 
         List<SaleDetail> details = saleData.get("details");
-        return ResponseEntity.ok(saleService.createSale(details,userId));
+        return ResponseEntity.ok(saleService.createSale(details, userId));
     }
 
     @GetMapping("/search")
@@ -77,33 +78,50 @@ public class SaleController {
         return ResponseEntity.ok(saleDeleted);
     }
 
-@GetMapping("/report")
-public ResponseEntity<byte[]> exportSalesReport(
-        @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime start,
-        @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime end) {
-    try {
-        // Create a temporary file
-        Path tempFile = Files.createTempFile("Reporte_Ventas_", ".xlsx");
-        
-        // Export the report
-        saleService.exportSalesReport(start, end, tempFile.toString());
-        
-        // Read the file content
-        byte[] content = Files.readAllBytes(tempFile);
-        
-        // Delete the temporary file
-        Files.delete(tempFile);
-        
-        // Prepare HTTP headers
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"));
-        headers.setContentDisposition(ContentDisposition.attachment().filename("Reporte_Ventas.xlsx").build());
-        
-        return ResponseEntity.ok()
-            .headers(headers)
-            .body(content);
-    } catch (IOException e) {
-        throw new RuntimeException("Error exporting sales report", e);
+    @GetMapping("/report")
+    public ResponseEntity<byte[]> exportSalesReport(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime start,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime end) {
+        try {
+            // Create a temporary file
+            Path tempFile = Files.createTempFile("Reporte_Ventas_", ".xlsx");
+
+            // Export the report
+            saleService.exportSalesReport(start, end, tempFile.toString());
+
+            // Read the file content
+            byte[] content = Files.readAllBytes(tempFile);
+
+            // Delete the temporary file
+            Files.delete(tempFile);
+
+            // Prepare HTTP headers
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(
+                    MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"));
+            headers.setContentDisposition(ContentDisposition.attachment().filename("Reporte_Ventas.xlsx").build());
+
+            return ResponseEntity.ok()
+                    .headers(headers)
+                    .body(content);
+        } catch (IOException e) {
+            throw new RuntimeException("Error exporting sales report", e);
+        }
     }
-}
+
+    @GetMapping("/{saleId}/receipt")
+    public ResponseEntity<byte[]> generateReceipt(@PathVariable Long saleId) {
+        byte[] pdfContent = saleService.generateSaleReceipt(saleId);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_PDF);
+        headers.setContentDisposition(
+                ContentDisposition.attachment()
+                        .filename("venta_" + saleId + ".pdf")
+                        .build());
+
+        return ResponseEntity.ok()
+                .headers(headers)
+                .body(pdfContent);
+    }
 }
