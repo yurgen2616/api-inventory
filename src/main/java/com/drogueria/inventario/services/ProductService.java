@@ -12,7 +12,7 @@ public interface ProductService {
     void deleteProduct(Long id);
     Product getProductById(Long id);
     List<Product> searchProducts(String query);
-    void addStock(Long productId, int quantity, double unitPrice,LocalDate expirationDate);
+    void addStock(Long productId, int quantity, double unitPrice, double unitSalePrice, LocalDate expirationDate);
     void exportProductsReport(String filePath);
         List<Map<String, Object>> getExpirationWarnings(int monthsThreshold);
 }

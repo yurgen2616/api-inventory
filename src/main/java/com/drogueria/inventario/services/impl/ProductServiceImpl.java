@@ -91,45 +91,57 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
-public void addStock(Long id, int quantity, double unitPrice, LocalDate expirationDate) {
-    Product product = productRepository.findById(id)
-            .orElseThrow(() -> new RuntimeException("Product not found"));
-
-    if (quantity <= 0) {
-        throw new IllegalArgumentException("Quantity must be greater than zero.");
+    public void addStock(Long id, int quantity, double unitPrice, double unitSalePrice, LocalDate expirationDate) {
+        Product product = productRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Product not found"));
+    
+        if (quantity <= 0) {
+            throw new IllegalArgumentException("Quantity must be greater than zero.");
+        }
+        if (unitPrice <= 0) {
+            throw new IllegalArgumentException("Unit price must be greater than zero.");
+        }
+        if (unitSalePrice <= unitPrice) {
+            throw new IllegalArgumentException("Sale price must be greater than purchase price.");
+        }
+        if (expirationDate.isBefore(LocalDate.now())) {
+            throw new IllegalArgumentException("Expiration date must be in the future.");
+        }
+    
+        // Create new stock batch
+        ProductStock newStock = new ProductStock();
+        newStock.setProduct(product);
+        newStock.setQuantity(quantity);
+        newStock.setUnitPrice(unitPrice);
+        newStock.setUnitSalePrice(unitSalePrice);  // Set new sale price
+        newStock.setExpirationDate(expirationDate);
+    
+        // Add new batch to product
+        product.getStocks().add(newStock);
+    
+        // Calculate new weighted average purchase price
+        double totalValue = product.getStock() * product.getPurchasePrice() +
+                quantity * unitPrice;
+        int totalQuantity = product.getStock() + quantity;
+    
+        if (totalQuantity > 0) {
+            product.setPurchasePrice(totalValue / totalQuantity);
+        }
+    
+        // Calculate new weighted average sale price
+        double totalSaleValue = product.getStock() * product.getSalePrice() +
+                quantity * unitSalePrice;
+        
+        if (totalQuantity > 0) {
+            product.setSalePrice(totalSaleValue / totalQuantity);
+        }
+    
+        // Update base stock by adding new quantity
+        product.setStock(product.getStock() + quantity);
+    
+        // Save product
+        productRepository.save(product);
     }
-    if (unitPrice <= 0) {
-        throw new IllegalArgumentException("Unit price must be greater than zero.");
-    }
-    if (expirationDate.isBefore(LocalDate.now())) {
-        throw new IllegalArgumentException("Expiration date must be in the future.");
-    }
-
-    // Crear un nuevo lote de inventario
-    ProductStock newStock = new ProductStock();
-    newStock.setProduct(product);
-    newStock.setQuantity(quantity);
-    newStock.setUnitPrice(unitPrice);
-    newStock.setExpirationDate(expirationDate);
-
-    // Agregar el nuevo lote al producto
-    product.getStocks().add(newStock);
-
-    // Calcular el nuevo precio de compra promedio ponderado
-    double totalValue = product.getStock() * product.getPurchasePrice() +
-            quantity * unitPrice;
-    int totalQuantity = product.getStock() + quantity;
-
-    if (totalQuantity > 0) {
-        product.setPurchasePrice(totalValue / totalQuantity);
-    }
-
-    // Actualizar el stock base sumando la nueva cantidad
-    product.setStock(product.getStock() + quantity);
-
-    // Guardar el producto
-    productRepository.save(product);
-}
 
     private void validateExpirationDate(LocalDate expirationDate) {
         if (expirationDate != null && expirationDate.isBefore(LocalDate.now())) {
