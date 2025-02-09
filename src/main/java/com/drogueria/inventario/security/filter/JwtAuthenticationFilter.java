@@ -86,7 +86,7 @@ public class JwtAuthenticationFilter extends UsernamePasswordAuthenticationFilte
         String token = Jwts.builder()
                 .subject(username)
                 .claims(rolesMap)  // Usar el mapa en lugar de Claims.add
-                .expiration(new Date(System.currentTimeMillis() + 3600000))
+                .expiration(new Date(System.currentTimeMillis() + 43200000))
                 .issuedAt(new Date())
                 .signWith(SECRET_KEY)
                 .compact();
